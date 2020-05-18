@@ -1,4 +1,8 @@
 import argparse
+import os
+from zipfile import BadZipFile
+
+from openpyxl import load_workbook
 
 
 SUCCESS = 1
@@ -21,21 +25,49 @@ def get_command_line_args():
     return args
 
 
+def get_cv_filepath(xls_path, position, name):
+    ''' Путь к резюме определяем относитель но пути к xls-файлу,
+    сопостоявляем папку с должностью, а имя файла - с ФИО
+    '''
+    return '/home/theodor/progs/Python/projects1/test_api/Тестовое задание/Менеджер по продажам/Корниенко Максим.doc'
+
+
 def get_candidate_from_xls_file(path, str_numbers: list=None):
-    # если файла не существует, или он не xls, или не тот формат - ошибка
+    # если путь к файлу некорректный - ошибка
+    if not ( os.path.exists(path) and os.path.isfile(path) ):
+        print('ERROR: file not found!')
+        return
+    # если это не excel-файл - ошибка
+    if not (os.path.splitext(path)[1] in ['.xls', '.xlsx']):
+        print('ERROR: file is not in excel format!')
+        return
 
-    # результат:
-    candidate = {
-        'position': position,
-        'name': name,
-        'salary_expectations': salary_expectations,
-        'comment': comment,
-        'status': status,
+    # загружаем из файла
+    try:
+        workbook = load_workbook(filename = path)
+    except BadZipFile:
+        print('ERROR: Bad excel-file format!')
+        return
+    
+    worksheet = workbook.active
 
-        'cv_filepath': cv_filepath
-        'str_number': str_number,
-    }
-    return candidate
+    i = 1
+    while True:
+        i += 1
+        position = worksheet['A'+str(i)].value
+        if not position:
+            break
+        cv_filepath = get_cv_filepath(
+            xls_path=path, position=position, name=worksheet['B'+str(i)].value)
+        yield {
+            'position': position,
+            'name': worksheet['B'+str(i)].value,
+            'salary_expectations': worksheet['C'+str(i)].value,
+            'comment': worksheet['D'+str(i)].value,
+            'status': worksheet['E'+str(i)].value,
+            'cv_filepath': cv_filepath,
+            'str_number': i,
+        }
 
 
 if __name__ == "__main__":
@@ -45,20 +77,15 @@ if __name__ == "__main__":
     path = args.path
     access_token = args.access_token
     load_only_erroneous_lines = args.load_err
-    print(path)
-    print(access_token)
-    print(load_only_erroneous_lines)
     
     str_numbers_list = None
     # if load_only_erroneous_lines:
     #     str_numbers_list = get_str_numbers_list_from_file() # эта функция удаляет временный файл
 
-    while True:
-        candidate = get_candidate_from_xls_file(path, str_numbers_list)
-        if not candidate:
-            break
-        else:
-            print(candidate)
+    print('*'*30)
+    for candidate in get_candidate_from_xls_file(path, str_numbers_list):
+        print(candidate)
+
 
 
     # while True:
