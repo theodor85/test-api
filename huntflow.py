@@ -2,30 +2,16 @@
     в базу данных huntflow.
 '''
 
-import argparse
 import os
 
-from working_with_the_api import send_applicant
-from working_with_the_api import REQUEST_SUCCESS, REQUEST_ERROR
-from excel import get_applicant_from_xls_file
+from modules.api import send_applicant
+from modules.api import REQUEST_SUCCESS, REQUEST_ERROR
+from modules.excel import get_applicant_from_xls_file
+from modules.args import get_command_line_args
 
 
 TMP_FILENAME = os.path.dirname(os.path.abspath(__file__)) + '/err_strings.tmp'
 
-
-def get_command_line_args():
-    ''' Обрабатывает аргументы командной строки и возвращает их '''
-    parser = argparse.ArgumentParser(
-        description='Loads info about applicants from xls and sends to huntflow.')
-
-    parser.add_argument('path', type=str, help='Path for xls-file')
-    parser.add_argument('access_token', type=str,
-        help='Your personal access token for huntflow API')
-    parser.add_argument('-l', '--load_err', action='store_true',
-        help='Use this flag for repeated loading the erroneous positions only.')
-
-    args = parser.parse_args()
-    return args
 
 def write_to_file_str_number(str_number):
     ''' Сохраняет ошибочные позиции во временный файл '''

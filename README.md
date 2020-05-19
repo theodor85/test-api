@@ -26,18 +26,18 @@
 
 Вывод справки по параметрам командной строки:
 
-    python script.py -h
+    python huntflow.py -h
 
 Или
 
-    python script.py --help
+    python huntflow.py --help
 
 Загрузка данных:
 
-    python script.py <путь xls-файла> <токен>
+    python huntflow.py <путь xls-файла> <токен>
 
 В случае появления ошибок при загрузке, запустите скрипт повторно с параметром -l или --load_err:
 
-    python script.py <путь xls-файла> <токен> --load_err
+    python huntflow.py <путь xls-файла> <токен> --load_err
 
 При наличии этого ключа скрипт загрузит только те позиции, обработка которых завершилась с ошибкой во время прошлого запуска.
