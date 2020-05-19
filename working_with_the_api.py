@@ -88,7 +88,6 @@ class ApplicantSender:
     def _upload_cv(self):
         response = self._upload_file(
             url=self.url_files,
-            headers=self.headers_files,
             filepath=self.applicant['cv_filepath'],
         )
         if not response:
@@ -108,7 +107,7 @@ class ApplicantSender:
             self.applicant['id_cv'] = response['id']
             self.status = REQUEST_SUCCESS
 
-    def _upload_file(self, url, headers, filepath):
+    def _upload_file(self, url, filepath):
         ''' Загружам файл с помощью curl '''
         cmd_list = []
         cmd_list.append('curl')
@@ -125,7 +124,6 @@ class ApplicantSender:
         cmd_list.append(url)
         result = subprocess.run(cmd_list, capture_output=True)        
         return json.loads(result.stdout.decode("utf-8"))
-
 
     def _do_post_request(self, url, headers, body, error_msg):
         try:
