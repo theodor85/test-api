@@ -1,3 +1,6 @@
+''' В этом модуле реализвана функциональность для обращения к huntflow API
+'''
+
 import json
 import subprocess
 
