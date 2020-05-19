@@ -15,21 +15,22 @@ from modules.tmp import TMP_FILENAME
 if __name__ == "__main__":
 
     args = get_command_line_args()
-    path = args.path
-    access_token = args.access_token
-    load_only_erroneous_lines = args.load_err
 
+    # если передан параметр -l (--load_err), то получить список строк,
+    # ранее завершившихся с ошибкой
     str_numbers_list = None
-    if load_only_erroneous_lines:
+    if args.load_err:
         str_numbers_list = get_str_numbers_list_from_file()
     else:
+        # временный файл нужно удалить, т.к. при новом запуске в него будут
+        # записываться новые данные
         if os.path.exists(TMP_FILENAME):
             os.remove(TMP_FILENAME)
 
     print('-'*30)
-    for applicant in get_applicant_from_xls_file(path, str_numbers_list):
+    for applicant in get_applicant_from_xls_file(args.path, str_numbers_list):
         print(f'\tЗагружается кандидат: {applicant["name"]}')
-        status = send_applicant(applicant, access_token)
+        status = send_applicant(applicant, args.access_token)
         if status == REQUEST_SUCCESS:
             continue
         else:
