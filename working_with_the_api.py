@@ -1,4 +1,5 @@
 import json
+import subprocess
 
 import requests
 from requests.exceptions import RequestException
@@ -84,17 +85,11 @@ class ApplicantSender:
 
         self._add_applicant_to_vacancy()
 
-
     def _upload_cv(self):
         response = self._upload_file(
             url=self.url_files,
             headers=self.headers_files,
             filepath=self.applicant['cv_filepath'],
-            error_msg=UPLOAD_CV_WARNING_MSG.format(
-                applicant=self.applicant['name'],
-                str_number=self.applicant['str_number'],
-                err='',
-            )
         )
         if not response:
              self.applicant['id_cv'] = None
@@ -113,19 +108,25 @@ class ApplicantSender:
             self.applicant['id_cv'] = response['id']
             self.status = REQUEST_SUCCESS
 
-    def _upload_file(self, url, headers, filepath, error_msg):
-        print('*'*30)
-        print(f'{url}, {headers}, {filepath}')
-        print('*'*30)
-        files = {'file': open(filepath, 'rb')}
-        try:
-            response = requests.post(url, files=files, headers=headers)
-        except RequestException as exception:
-            print(error_msg.format(err=str(exception)))
-            return None
-        else:
-            return response.json()
-    
+    def _upload_file(self, url, headers, filepath):
+        ''' Загружам файл с помощью curl '''
+        cmd_list = []
+        cmd_list.append('curl')
+        cmd_list.append('-X')
+        cmd_list.append('POST')
+        cmd_list.append('-H')
+        cmd_list.append('Content-Type: multipart/form-data')
+        cmd_list.append('-H')
+        cmd_list.append('X-File-Parse: true')
+        cmd_list.append('-H')
+        cmd_list.append(f'Authorization: Bearer {self.access_token}')
+        cmd_list.append('-F')
+        cmd_list.append(f'file=@{filepath}')
+        cmd_list.append(url)
+        result = subprocess.run(cmd_list, capture_output=True)        
+        return json.loads(result.stdout.decode("utf-8"))
+
+
     def _do_post_request(self, url, headers, body, error_msg):
         try:
             response = requests.post(url, data=json.dumps(body), headers=headers)
@@ -194,6 +195,7 @@ class ApplicantSender:
         if self.applicant.get('id_cv'):
             body['externals'] = [
                 {
+                    "auth_type": "NATIVE",
                     "files": [
                         {
                             "id": self.applicant['id_cv'],
@@ -256,16 +258,15 @@ class ApplicantSender:
             self.status = REQUEST_SUCCESS
 
     def _add_applicant_to_vacancy(self):
-        print('*')
         body = {
             "vacancy": self.applicant['vacancy_id'],
             "status": self.applicant['status_id'],
             "comment": self.applicant['comment'],
-            # "files": [
-            #     {
-            #         "id": self.applicant['id_cv']
-            #     },
-            # ],
+            "files": [
+                {
+                    "id": self.applicant['id_cv']
+                },
+            ],
         }
         response = self._do_post_request(
             url=f'{BASE_URL}/account/{ACCOUNT_ID}/applicants/{self.applicant["id_applicant"]}/vacancy',
