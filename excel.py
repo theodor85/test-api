@@ -56,15 +56,16 @@ def get_applicant_from_xls_file(path, str_numbers: list=None):
     i = 1
     while True:
         i += 1
+        position = worksheet['A'+str(i)].value
+        if not position:
+            break
+        
         # если загружаем указанные строки, проверяем вхождение строки
         # в список указанных строк (иначе - следующая итерация)
         if str_numbers:
             if not (i in str_numbers):
                 continue
 
-        position = worksheet['A'+str(i)].value
-        if not position:
-            break
         cv_filepath = get_cv_filepath(
             xls_path=path, position=position, name=worksheet['B'+str(i)].value)
         yield {
