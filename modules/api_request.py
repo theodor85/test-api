@@ -2,10 +2,12 @@
 выполнения конкретных низкоуровневых дествий с API. 
 Классы организованы по паттерну TemplateMethod
 '''
-
 import json
 import subprocess
 from abc import ABC, abstractmethod
+
+import requests
+from requests.exceptions import RequestException
 
 REQUEST_SUCCESS = 1
 REQUEST_ERROR = 0
@@ -18,6 +20,10 @@ ACCOUNT_ID = 6 # аккаут тестовой фирмы
 class AbstractAccessorAPI(ABC):
     ''' Базовый абстрактный класс из паттерна TemplateMethod '''
     
+    def __init__(self, applicant, access_token):
+        self.applicant = applicant
+        self.access_token = access_token
+
     def api_request(self) -> int:
         ''' Возвращает статус запроса: успех/ошибка
         '''
@@ -42,6 +48,13 @@ class AbstractAccessorAPI(ABC):
             self._find_parameter(response)
             return REQUEST_SUCCESS
 
+    def _headers(self):
+        return {
+            'User-Agent': USER_AGENT,
+            'Authorization': f'Bearer {self.access_token}',
+            'Accept': '*/*',
+        }
+
     @abstractmethod
     def _make_url(self):
         pass
@@ -63,8 +76,7 @@ class CV_Uploader(AbstractAccessorAPI):
     ''' Загрузка файла с резюме '''
 
     def __init__(self, applicant, access_token, filepath):
-        self.applicant = applicant
-        self.access_token = access_token
+        super().__init__(applicant, access_token)
         self.filepath = filepath
 
     def _make_url(self):
@@ -93,3 +105,42 @@ class CV_Uploader(AbstractAccessorAPI):
     
     def _find_parameter(self, response):
         self.applicant['id_cv'] = response['id']
+
+
+class VacancyIdGetter(AbstractAccessorAPI):
+    ''' Получение id вакансии данного кандидата '''
+
+    def __init__(self, applicant, access_token, ):
+        super().__init__(applicant, access_token)
+
+    def _make_url(self):
+        return f'{BASE_URL}/account/{ACCOUNT_ID}/vacancies'
+    
+    def _make_body(self):
+        return None
+    
+    def _request(self, url, body=None):
+        try:
+            response = requests.get(url, headers=self._headers())
+        except RequestException as exception:
+            print(f'ERROR: VacancyIdGetter: {str(exception)}')
+            return None
+        else:
+            try:
+                result = response.json()
+            except json.decoder.JSONDecodeError as exception:
+                print('ERROR: VacancyIdGetter: JSON decode error!')
+                return None
+            else: 
+                return result
+
+    def _find_parameter(self, response):
+        is_not_vacancy_found = True
+        for vacancy in response['items']:
+            if vacancy['position']==self.applicant['position']:
+                self.applicant['vacancy_id'] = vacancy['id']
+                is_not_vacancy_found = False
+                break
+        if is_not_vacancy_found:
+            self.applicant['vacancy_id'] = None
+            print(f'WARNING: Vacancy {self.applicant["position"]} not found!')

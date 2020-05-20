@@ -7,7 +7,7 @@ import subprocess
 import requests
 from requests.exceptions import RequestException
 
-from .api_request import CV_Uploader
+from .api_request import CV_Uploader, VacancyIdGetter
 
 REQUEST_SUCCESS = 1
 REQUEST_ERROR = 0
@@ -105,39 +105,8 @@ class ApplicantSender:
             return response.json()
 
     def _get_vacancy_id(self):
-        response = self._do_get_request(
-            url=self.url_vacancies,
-            headers=self.headers_applicants, 
-            error_msg=ERROR_MESSAGE_VACANCY.format(
-                applicant=self.applicant['name'],
-                str_number=self.applicant['str_number'],
-                vacancy=self.applicant['position'],
-                err='',
-            )
-        )
-        if not response:
-             self.status = REQUEST_ERROR
-             return
-
-        if response.get('errors'):
-            print(ERROR_MESSAGE_VACANCY.format(
-                applicant=self.applicant['name'],
-                str_number=self.applicant['str_number'],
-                err=str(response['errors']),
-                vacancy=self.applicant['position'],
-            ))
-            self.status = REQUEST_ERROR
-            return
-        is_not_vacancy_found = True
-        for vacancy in response['items']:
-            if vacancy['position']==self.applicant['position']:
-                self.applicant['vacancy_id'] = vacancy['id']
-                is_not_vacancy_found = False
-                break
-        if is_not_vacancy_found:
-            self.status = REQUEST_ERROR
-        else:
-            self.status = REQUEST_SUCCESS
+        vacancy_id_getter = VacancyIdGetter(self.applicant, self.access_token)
+        self.status = vacancy_id_getter.api_request()
 
     def _do_get_request(self, url, headers, error_msg):
         try:
