@@ -8,7 +8,7 @@ import requests
 from requests.exceptions import RequestException
 
 from .api_request import CV_Uploader, VacancyIdGetter, ApplicantDatabaseSaver
-from .api_request import StatusIdGetter
+from .api_request import StatusIdGetter, ApplicantToVacancyBonding
 
 REQUEST_SUCCESS = 1
 REQUEST_ERROR = 0
@@ -114,6 +114,9 @@ class ApplicantSender:
         self.status = status_getter.api_request()
 
     def _add_applicant_to_vacancy(self):
+        bonding = ApplicantToVacancyBonding(self.applicant, self.access_token)
+        self.status = bonding.api_request()
+        
         body = {
             "vacancy": self.applicant['vacancy_id'],
             "status": self.applicant['status_id'],

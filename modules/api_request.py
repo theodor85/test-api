@@ -251,3 +251,48 @@ class StatusIdGetter(AbstractAccessorAPI):
         if is_not_status_found:
             self.applicant['status_id'] = None
             print(f'WARNING: Status for {self.applicant["name"]} not found!')
+
+
+class ApplicantToVacancyBonding(AbstractAccessorAPI):
+    ''' Связывает кандидата и вакансию '''
+
+    def __init__(self, applicant, access_token, ):
+        super().__init__(applicant, access_token)
+
+    def _make_url(self):
+        return f'{BASE_URL}/account/{ACCOUNT_ID}/applicants/{self.applicant["id_applicant"]}/vacancy'
+
+    def _make_body(self):
+        body = {
+            "vacancy": self.applicant['vacancy_id'],
+            "status": self.applicant['status_id'],
+            "comment": self.applicant['comment'],
+        }
+        
+        # если есть резюме, то добавим его
+        if self.applicant.get('id_cv'):
+            body['files'] = [
+                {
+                    "id": self.applicant['id_cv']
+                },
+            ]
+        return body
+    
+    def _request(self, url, body=None):
+        try:
+            response = requests.post(url, data=json.dumps(body),
+                headers=self._headers())
+        except RequestException as exception:
+            print(f'ERROR: ApplicantToVacancyBonding: {str(exception)}')
+            return None
+        else:
+            try:
+                result = response.json()
+            except json.decoder.JSONDecodeError as exception:
+                print('ERROR: ApplicantToVacancyBonding: JSON decode error!')
+                return None
+            else: 
+                return result
+
+    def _find_parameter(self, response):
+        pass
