@@ -17,6 +17,19 @@ BASE_URL = 'https://dev-100-api.huntflow.ru'
 ACCOUNT_ID = 6 # аккаут тестовой фирмы
 
 
+def translate_statuses(status_rus):
+    ''' Вспомогательная функция для перевода статуса кандидата
+    с русского на английский '''
+    
+    data = {
+        'Отправлено письмо': 'Submitted',
+        'Интервью с HR': 'HR Interview',
+        'Выставлен оффер': 'Offered',
+        'Отказ': 'Declined',
+    }
+    return data.get(status_rus)
+
+
 class AbstractAccessorAPI(ABC):
     ''' Базовый абстрактный класс из паттерна TemplateMethod '''
     
@@ -162,7 +175,7 @@ class ApplicantDatabaseSaver(AbstractAccessorAPI):
             "first_name": self.applicant['name'].split()[1],
             "money": self.applicant['salary_expectations'],
         }
-        
+
         # если есть отчество, то добавим его
         if len(self.applicant['name'].split()) == 3:
             body['middle_name'] = self.applicant['name'].split()[2]
@@ -199,3 +212,42 @@ class ApplicantDatabaseSaver(AbstractAccessorAPI):
 
     def _find_parameter(self, response):
         self.applicant['id_applicant'] = response['id']
+
+
+class StatusIdGetter(AbstractAccessorAPI):
+    ''' Получение id статуса (этапа работы) кандидата '''
+
+    def __init__(self, applicant, access_token, ):
+        super().__init__(applicant, access_token)
+
+    def _make_url(self):
+        return f'{BASE_URL}/account/{ACCOUNT_ID}/vacancy/statuses'
+
+    def _make_body(self):
+        return None
+    
+    def _request(self, url, body=None):
+        try:
+            response = requests.get(url, headers=self._headers())
+        except RequestException as exception:
+            print(f'ERROR: StatusIdGetter: {str(exception)}')
+            return None
+        else:
+            try:
+                result = response.json()
+            except json.decoder.JSONDecodeError as exception:
+                print('ERROR: StatusIdGetter: JSON decode error!')
+                return None
+            else: 
+                return result
+
+    def _find_parameter(self, response):
+        is_not_status_found = True
+        for status in response['items']:
+            if status['name'] == translate_statuses(self.applicant['status']):
+                self.applicant['status_id'] = status['id']
+                is_not_status_found = False
+                break
+        if is_not_status_found:
+            self.applicant['status_id'] = None
+            print(f'WARNING: Status for {self.applicant["name"]} not found!')

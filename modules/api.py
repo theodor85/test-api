@@ -8,6 +8,7 @@ import requests
 from requests.exceptions import RequestException
 
 from .api_request import CV_Uploader, VacancyIdGetter, ApplicantDatabaseSaver
+from .api_request import StatusIdGetter
 
 REQUEST_SUCCESS = 1
 REQUEST_ERROR = 0
@@ -25,18 +26,6 @@ ERROR_MESSAGE_APPLICANT = 'ERROR: Не удалось загрузить кан�
 ERROR_MESSAGE_VACANCY_STATUS = 'ERROR: Не удалось получить статус вакансии для \
     {applicant} в строке {str_number}. Ошибка: {err}'
 
-
-def translate_statuses(status_rus):
-    ''' Вспомогательная функция для перевода статуса кандидата
-    с русского на английский '''
-    
-    data = {
-        'Отправлено письмо': 'Submitted',
-        'Интервью с HR': 'HR Interview',
-        'Выставлен оффер': 'Offered',
-        'Отказ': 'Declined',
-    }
-    return data.get(status_rus)
 
 class ApplicantSender:
     ''' Callable класс, в котором реализована логика отправки данных о 
@@ -121,34 +110,8 @@ class ApplicantSender:
         self.status = saver.api_request()
     
     def _get_vacancy_status_id(self):
-        response = self._do_get_request(url=self.url_statuses,
-            headers=self.headers_applicants,
-            error_msg=ERROR_MESSAGE_VACANCY_STATUS.format(
-                applicant=self.applicant['name'],
-                str_number=self.applicant['str_number'],
-                err='',
-            )
-        )
-        if not response:
-             self.status = REQUEST_ERROR
-             return
-
-        if response.get('errors'):
-            print(ERROR_MESSAGE_VACANCY_STATUS.format(
-                applicant=self.applicant['name'],
-                str_number=self.applicant['str_number'],
-                err=str(response['errors']),
-            ))
-        is_not_status_found = True
-        for status in response['items']:
-            if status['name'] == translate_statuses(self.applicant['status']):
-                self.applicant['status_id'] = status['id']
-                is_not_status_found = False
-                break
-        if is_not_status_found:
-            self.status = REQUEST_ERROR
-        else:
-            self.status = REQUEST_SUCCESS
+        status_getter = StatusIdGetter(self.applicant, self.access_token)
+        self.status = status_getter.api_request()
 
     def _add_applicant_to_vacancy(self):
         body = {
