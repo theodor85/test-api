@@ -1,4 +1,4 @@
-''' В этом модуле реализвана функциональность для обращения к huntflow API
+''' В этом модуле реализвана функциональность загрузки данных по huntflow API
 '''
 
 import json
@@ -6,6 +6,8 @@ import subprocess
 
 import requests
 from requests.exceptions import RequestException
+
+from .api_request import CV_Uploader
 
 REQUEST_SUCCESS = 1
 REQUEST_ERROR = 0
@@ -89,44 +91,9 @@ class ApplicantSender:
         self._add_applicant_to_vacancy()
 
     def _upload_cv(self):
-        response = self._upload_file(
-            url=self.url_files,
-            filepath=self.applicant['cv_filepath'],
-        )
-        if not response:
-             self.applicant['id_cv'] = None
-             self.status = REQUEST_ERROR
-             return
-
-        if response.get('errors'):
-            self.applicant['id_cv'] = None
-            print(UPLOAD_CV_WARNING_MSG.format(
-                applicant=self.applicant['name'],
-                str_number=self.applicant['str_number'],
-                err=str(response['errors']),
-            ))
-            self.status = REQUEST_ERROR
-        else:
-            self.applicant['id_cv'] = response['id']
-            self.status = REQUEST_SUCCESS
-
-    def _upload_file(self, url, filepath):
-        ''' Загружам файл с помощью curl '''
-        cmd_list = []
-        cmd_list.append('curl')
-        cmd_list.append('-X')
-        cmd_list.append('POST')
-        cmd_list.append('-H')
-        cmd_list.append('Content-Type: multipart/form-data')
-        cmd_list.append('-H')
-        cmd_list.append('X-File-Parse: true')
-        cmd_list.append('-H')
-        cmd_list.append(f'Authorization: Bearer {self.access_token}')
-        cmd_list.append('-F')
-        cmd_list.append(f'file=@{filepath}')
-        cmd_list.append(url)
-        result = subprocess.run(cmd_list, capture_output=True)        
-        return json.loads(result.stdout.decode("utf-8"))
+        uploader = CV_Uploader(
+            self.applicant, self.access_token, self.applicant['cv_filepath'])
+        self.status = uploader.api_request()
 
     def _do_post_request(self, url, headers, body, error_msg):
         try:
