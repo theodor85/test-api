@@ -43,6 +43,7 @@ class AbstractAccessorAPI(ABC):
         # проверить, есть ли ошибки
         if response.get('errors'):
             print(f'ERROR: {response["errors"]}')
+            return REQUEST_ERROR
         else:
             # если нет - найти нужный параметр
             self._find_parameter(response)
@@ -144,3 +145,57 @@ class VacancyIdGetter(AbstractAccessorAPI):
         if is_not_vacancy_found:
             self.applicant['vacancy_id'] = None
             print(f'WARNING: Vacancy {self.applicant["position"]} not found!')
+
+
+class ApplicantDatabaseSaver(AbstractAccessorAPI):
+    ''' Сохранение кандидата в базе '''
+
+    def __init__(self, applicant, access_token, ):
+        super().__init__(applicant, access_token)
+
+    def _make_url(self):
+        return f'{BASE_URL}/account/{ACCOUNT_ID}/applicants'
+
+    def _make_body(self):
+        body = {
+            "last_name": self.applicant['name'].split()[0],
+            "first_name": self.applicant['name'].split()[1],
+            "money": self.applicant['salary_expectations'],
+        }
+        
+        # если есть отчество, то добавим его
+        if len(self.applicant['name'].split()) == 3:
+            body['middle_name'] = self.applicant['name'].split()[2]
+        
+        # если есть резюме, то добавим его
+        if self.applicant.get('id_cv'):
+            body['externals'] = [
+                {
+                    "auth_type": "NATIVE",
+                    "files": [
+                        {
+                            "id": self.applicant['id_cv'],
+                        }
+                    ],
+                }
+            ]
+        return body
+    
+    def _request(self, url, body=None):
+        try:
+            response = requests.post(url, data=json.dumps(body),
+                headers=self._headers())
+        except RequestException as exception:
+            print(f'ERROR: ApplicantDatabaseSaver: {str(exception)}')
+            return None
+        else:
+            try:
+                result = response.json()
+            except json.decoder.JSONDecodeError as exception:
+                print('ERROR: ApplicantDatabaseSaver: JSON decode error!')
+                return None
+            else: 
+                return result
+
+    def _find_parameter(self, response):
+        self.applicant['id_applicant'] = response['id']

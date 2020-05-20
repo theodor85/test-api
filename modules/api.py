@@ -7,7 +7,7 @@ import subprocess
 import requests
 from requests.exceptions import RequestException
 
-from .api_request import CV_Uploader, VacancyIdGetter
+from .api_request import CV_Uploader, VacancyIdGetter, ApplicantDatabaseSaver
 
 REQUEST_SUCCESS = 1
 REQUEST_ERROR = 0
@@ -56,13 +56,6 @@ class ApplicantSender:
             'User-Agent': USER_AGENT,
             'Authorization': f'Bearer {self.access_token}',
             'Accept': '*/*',
-        }
-        self.headers_files = {
-            'User-Agent': USER_AGENT,
-            'Authorization': f'Bearer {self.access_token}',
-            'Accept': '*/*',
-            'Content-Type': 'multipart/form-data',
-            'X-File-Parse': 'true',
         }
 
     def _make_urls(self):
@@ -124,45 +117,8 @@ class ApplicantSender:
                 return result
 
     def _add_applicant_to_database(self):
-        body = {
-                "last_name": self.applicant['name'].split()[0],
-                "first_name": self.applicant['name'].split()[1],
-                "money": self.applicant['salary_expectations'],
-            }
-        if self.applicant.get('id_cv'):
-            body['externals'] = [
-                {
-                    "auth_type": "NATIVE",
-                    "files": [
-                        {
-                            "id": self.applicant['id_cv'],
-                        }
-                    ],
-                }
-            ]
-        response = self._do_post_request(
-            url=self.url_applicants, headers=self.headers_applicants,
-            body=body,
-            error_msg=ERROR_MESSAGE_APPLICANT.format(
-                applicant=self.applicant['name'],
-                str_number=self.applicant['str_number'],
-                err='',
-            )
-        )
-        if not response:
-            self.status = REQUEST_ERROR
-            return
-
-        if response.get('errors'):
-            print(ERROR_MESSAGE_APPLICANT.format(
-                applicant=self.applicant['name'],
-                str_number=self.applicant['str_number'],
-                err=str(response['errors']),
-            ))
-            self.status = REQUEST_ERROR
-        else:
-            self.applicant['id_applicant'] = response['id']
-            self.status = REQUEST_SUCCESS
+        saver = ApplicantDatabaseSaver(self.applicant, self.access_token)
+        self.status = saver.api_request()
     
     def _get_vacancy_status_id(self):
         response = self._do_get_request(url=self.url_statuses,
